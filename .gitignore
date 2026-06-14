@@ -1,1 +1,17 @@
+# macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Logs / прочее локальное
+*.log
+.env
+.env.local
