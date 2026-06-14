@@ -4,13 +4,16 @@
 
 ## Проблема
 
-После установки и запуска `Max.app` окно открывается, но содержимое не отрисовывается — пустое (белое / прозрачное) окно без интерфейса. MAX построен на Qt; по умолчанию Qt Quick Scene Graph использует Metal-бэкенд, который на встроенных GPU MacBookPro 11,x ведёт себя некорректно.
+После установки и запуска `Max.app` окно открывается, но содержимое не отрисовывается — пустое (белое / прозрачное) окно без интерфейса. MAX построен на Qt; на MacBookPro 11,x причина зависит от модели:
+
+- **11,4** (15", только Iris Pro 5200) — Qt RHI ломается без явно зафиксированного бэкенда; работает с `QSG_RHI_BACKEND=metal`.
+- **11,5** (15", Iris Pro 5200 + дискретная AMD Radeon R9 M370X) — macOS форсит приложение на AMD, чей Metal-драйвер отвергает Qt-пайплайны (`Attribute 7 refers to a buffer index 2 that is not valid`). Попытка увести на интегрированную GPU через `NSSupportsAutomaticGraphicsSwitching` не помогает — AMD всё равно подхватывается. Единственный рабочий вариант — переключить Qt RHI на OpenGL (`QSG_RHI_BACKEND=opengl`), при этом теряются превью изображений в чатах.
 
 ## Что делает скрипт
 
-[`max-qt-repire.sh`](./max-qt-repire.sh) выполняет три шага:
+[`max-qt-repire.sh`](./max-qt-repire.sh) определяет модель через `sysctl -n hw.model` и выполняет три шага над `Info.plist` и подписью приложения:
 
-1. **Прописывает `QSG_RHI_BACKEND=opengl`** в `Info.plist` приложения (секция `LSEnvironment`) через `PlistBuddy` — принудительно переключает Qt на OpenGL-бэкенд.
+1. **Прописывает `QSG_RHI_BACKEND`** в секцию `LSEnvironment` `Info.plist` через `PlistBuddy`: `metal` на всех моделях, кроме `MacBookPro11,5`, где ставит `opengl`.
 2. **Снимает карантин** (`xattr -dr com.apple.quarantine`) и **переподписывает** приложение ad-hoc подписью (`codesign --force --deep --sign -`) — правка `Info.plist` ломает исходную подпись, без переподписи Gatekeeper не даст запустить.
 3. **Запускает** `Max.app`.
 
